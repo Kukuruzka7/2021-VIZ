@@ -8,10 +8,76 @@ import org.jetbrains.skiko.SkiaWindow
 import java.awt.Dimension
 import java.awt.event.MouseEvent
 import java.awt.event.MouseMotionAdapter
+import java.io.File
 import javax.swing.WindowConstants
 
-fun main() {
+enum class Diagram(val diagram: String) {
+    SCHEDULE("schedule_diagram"), PIE("pie_diagram"), COLUMN("column_diagram"), ERR("error");
+
+    companion object {
+        fun getDiagramFromString(str: String): Diagram {
+            for (value in values()) {
+                if (value.diagram == str) {
+                    return value
+                }
+            }
+            return ERR
+        }
+    }
+}
+
+enum class Error(val str: String) {
+    NOT_ALL_ARGUMENTS("Неверный формат ввода данных. Ожидается: <dataFileName> <output.png> diagramType"),
+    FILE_IS_NOT_EXIST("Файла с данным названием не существует."),
+    DIAGRAM_TYPE_IS_NOT_EXIST("Данный тип диаграммы не поддерживается.");
+}
+
+class Input(args: Array<String>) {
+    var dataFile: File? = null
+    var outputFile: File? = null
+    var diagramType: Diagram? = Diagram.ERR
+
+    init {
+
+        if (args.size > 0 && File(args[0]).isFile) {
+            dataFile = File(args[0])
+        }
+        if (args.size > 1 && File(args[1]).isFile) {
+            outputFile = File(args[1])
+        }
+        if (args.size > 3) {
+            diagramType = Diagram.getDiagramFromString(args[2])
+        }
+    }
+
+    fun check(): Error? {
+        if (diagramType == Diagram.ERR) {
+            return Error.DIAGRAM_TYPE_IS_NOT_EXIST
+        }
+        if (outputFile == null || dataFile == null) {
+            return Error.FILE_IS_NOT_EXIST
+        }
+        return null
+    }
+}
+
+fun main(args: Array<String>) {
+    if (args.size == 3) {
+        val input = Input(args)
+        val errorInInput = input.check()
+        if (errorInInput == null) {
+            TODO()
+        } else {
+            printError(errorInInput)
+        }
+    } else {
+        printError(Error.NOT_ALL_ARGUMENTS)
+    }
     createWindow("pf-2021-viz")
+}
+
+fun printError(error: Error) {
+    TODO()
 }
 
 fun createWindow(title: String) = runBlocking(Dispatchers.Swing) {
@@ -23,13 +89,13 @@ fun createWindow(title: String) = runBlocking(Dispatchers.Swing) {
     window.layer.addMouseMotionListener(MyMouseMotionAdapter)
 
     window.preferredSize = Dimension(800, 600)
-    window.minimumSize = Dimension(100,100)
+    window.minimumSize = Dimension(100, 100)
     window.pack()
     window.layer.awaitRedraw()
     window.isVisible = true
 }
 
-class Renderer(val layer: SkiaLayer): SkiaRenderer {
+class Renderer(val layer: SkiaLayer) : SkiaRenderer {
     val typeface = Typeface.makeFromFile("fonts/JetBrainsMono-Regular.ttf")
     val font = Font(typeface, 40f)
     val paint = Paint().apply {
