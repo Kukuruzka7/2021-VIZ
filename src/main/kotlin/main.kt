@@ -8,7 +8,7 @@ import org.jetbrains.skiko.SkiaWindow
 import java.awt.Dimension
 import java.awt.event.MouseEvent
 import java.awt.event.MouseMotionAdapter
-import java.io.File
+import java.util.*
 import javax.swing.WindowConstants
 
 enum class Diagram(val diagram: String) {
@@ -26,76 +26,38 @@ enum class Diagram(val diagram: String) {
     }
 }
 
-enum class Error(val str: String) {
-    NOT_ALL_ARGUMENTS("Неверный формат ввода данных. Ожидается: <dataFileName> <output.png> diagramType"),
-    FILE_IS_NOT_EXIST("Файла с данным названием не существует."),
-    DIAGRAM_TYPE_IS_NOT_EXIST("Данный тип диаграммы не поддерживается.");
+data class NameColor(val name: String, val color: Int)
+data class NameValue(val name: String, val value: Int)
+
+fun main() {
+    createWindow(
+        "pf-2021-viz",
+        Diagram.PIE,
+        listOf(
+            NameValue("aa", 400),
+            NameValue("a", 20),
+            NameValue("a", 20),
+            NameValue("a", 20)
+        )
+    )
 }
 
-class Input(args: Array<String>) {
-    var dataFile: File? = null
-    var outputFile: File? = null
-    var diagramType: Diagram? = Diagram.ERR
-
-    init {
-
-        if (args.size > 0 && File(args[0]).isFile) {
-            dataFile = File(args[0])
-        }
-        if (args.size > 1 && File(args[1]).isFile) {
-            outputFile = File(args[1])
-        }
-        if (args.size > 3) {
-            diagramType = Diagram.getDiagramFromString(args[2])
-        }
-    }
-
-    fun check(): Error? {
-        if (diagramType == Diagram.ERR) {
-            return Error.DIAGRAM_TYPE_IS_NOT_EXIST
-        }
-        if (outputFile == null || dataFile == null) {
-            return Error.FILE_IS_NOT_EXIST
-        }
-        return null
-    }
-}
-
-fun main(args: Array<String>) {
-    if (args.size == 3) {
-        val input = Input(args)
-        val errorInInput = input.check()
-        if (errorInInput == null) {
-            TODO()
-        } else {
-            printError(errorInInput)
-        }
-    } else {
-        printError(Error.NOT_ALL_ARGUMENTS)
-    }
-    createWindow("pf-2021-viz")
-}
-
-fun printError(error: Error) {
-    TODO()
-}
-
-fun createWindow(title: String) = runBlocking(Dispatchers.Swing) {
+fun createWindow(title: String, type: Diagram, listNameValue: List<NameValue>) = runBlocking(Dispatchers.Swing) {
     val window = SkiaWindow()
     window.defaultCloseOperation = WindowConstants.DISPOSE_ON_CLOSE
     window.title = title
 
-    window.layer.renderer = Renderer(window.layer)
+    window.layer.renderer = Renderer(window.layer, type, listNameValue)
     window.layer.addMouseMotionListener(MyMouseMotionAdapter)
 
-    window.preferredSize = Dimension(800, 600)
+    window.preferredSize = Dimension(900, 600)
     window.minimumSize = Dimension(100, 100)
     window.pack()
     window.layer.awaitRedraw()
     window.isVisible = true
 }
 
-class Renderer(val layer: SkiaLayer) : SkiaRenderer {
+class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<NameValue>) : SkiaRenderer {
     val typeface = Typeface.makeFromFile("fonts/JetBrainsMono-Regular.ttf")
     val font = Font(typeface, 40f)
     val paint = Paint().apply {
@@ -103,14 +65,64 @@ class Renderer(val layer: SkiaLayer) : SkiaRenderer {
         mode = PaintMode.FILL
         strokeWidth = 1f
     }
+    val randomColor = List(listNameValue.size) {
+        Color.makeARGB(
+            255,
+            Random().nextInt(256),
+            Random().nextInt(256),
+            Random().nextInt(256)
+        )
+    }
+    val listNameColor = List(listNameValue.size) { NameColor(listNameValue[it].name, randomColor[it]) }
 
     override fun onRender(canvas: Canvas, width: Int, height: Int, nanoTime: Long) {
         val contentScale = layer.contentScale
         canvas.scale(contentScale, contentScale)
         val w = (width / contentScale).toInt()
         val h = (height / contentScale).toInt()
+        val k = 0.9
+        val centerX = w / 3
+        val centerY = h / 2
+        val radius = Math.min(h / 2 * k, w / 3 * k).toInt()
 
-        // РИСОВАНИЕ
+        val totalValue = listNameValue.sumOf { it.value }
+        fun getStepSize(value: Double, total: Int): Double {
+            return (360 * value) / total
+        }
+
+        var start = 0.0
+        val steps = listNameValue.size
+        var stepSize: Double
+        for (i in 0..steps - 1) {
+            stepSize = getStepSize(listNameValue[i].value.toDouble(), totalValue)
+            paint.color = listNameColor[i].color
+            canvas.drawArc(
+                (centerX - radius).toFloat(),
+                (centerY - radius).toFloat(),
+                (centerX + radius).toFloat(),
+                (centerY + radius).toFloat(),
+                start.toFloat(),
+                stepSize.toFloat(),
+                true,
+                paint
+            )
+            start += stepSize
+        }
+
+        val upLeftX = w / 2 + w * k / 6
+        val upLeftY = h * (1 - k) / 2
+        val d = h * k / steps
+        font.setSize((2 * d / 3).toFloat())
+        for (i in 0..steps - 1) {
+            paint.color = listNameColor[i].color
+            canvas.drawString(
+                listNameColor[i].name,
+                upLeftX.toFloat(),
+                (i * d + upLeftY).toFloat() + font.size,
+                font,
+                paint
+            )
+        }
 
         layer.needRedraw()
     }
