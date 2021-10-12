@@ -32,7 +32,7 @@ data class NameValue(val name: String, val value: Int)
 fun main() {
     createWindow(
         "pf-2021-viz",
-        Diagram.PIE,
+        Diagram.SCHEDULE,
         listOf(
             NameValue("aa", 400),
             NameValue("a", 20),
@@ -80,6 +80,15 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
         canvas.scale(contentScale, contentScale)
         val w = (width / contentScale).toInt()
         val h = (height / contentScale).toInt()
+        when (type) {
+            Diagram.PIE -> canvas.drawPieDiagram(w, h)
+            Diagram.COLUMN -> canvas.drawColumnDiagram(w, h)
+            Diagram.SCHEDULE -> canvas.drawScheduleDiagram(w, h)
+        }
+        layer.needRedraw()
+    }
+
+    private fun Canvas.drawPieDiagram(w: Int, h: Int) {
         val k = 0.9
         val centerX = w / 3
         val centerY = h / 2
@@ -96,7 +105,7 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
         for (i in 0..steps - 1) {
             stepSize = getStepSize(listNameValue[i].value.toDouble(), totalValue)
             paint.color = listNameColor[i].color
-            canvas.drawArc(
+            this.drawArc(
                 (centerX - radius).toFloat(),
                 (centerY - radius).toFloat(),
                 (centerX + radius).toFloat(),
@@ -115,7 +124,7 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
         font.setSize((2 * d / 3).toFloat())
         for (i in 0..steps - 1) {
             paint.color = listNameColor[i].color
-            canvas.drawString(
+            this.drawString(
                 listNameColor[i].name,
                 upLeftX.toFloat(),
                 (i * d + upLeftY).toFloat() + font.size,
@@ -123,10 +132,116 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
                 paint
             )
         }
+    }
 
-        layer.needRedraw()
+    private fun Canvas.drawColumnDiagram(w: Int, h: Int) {
+        val k = 0.9
+        val steps = listNameValue.size
+        val startX = w / 3 * (1 - k)
+        val startY = h / 2 + h * k / 2
+        val dX = 2 * w / 3 * k / (2 * steps - 1)
+        val maxSize = h * k
+
+        val maxValue = listNameValue.maxOf { it.value }
+        fun getSize(value: Double): Double {
+            return value / maxValue * maxSize
+        }
+
+        for (i in 0..steps - 1) {
+            paint.color = listNameColor[i].color
+            this.drawRect(
+                Rect(
+                    (startX + i * 2 * dX).toFloat(),
+                    (startY - getSize(listNameValue[i].value.toDouble())).toFloat(),
+                    (startX + i * 2 * dX + dX).toFloat(),
+                    (startY).toFloat()
+                ), paint
+            )
+        }
+
+        val upLeftX = w / 2 + w * k / 6
+        val upLeftY = h * (1 - k) / 2
+        val d = h * k / steps
+        font.setSize((2 * d / 3).toFloat())
+        for (i in 0..steps - 1) {
+            paint.color = listNameColor[i].color
+            this.drawString(
+                listNameColor[i].name,
+                upLeftX.toFloat(),
+                (i * d + upLeftY).toFloat() + font.size,
+                font,
+                paint
+            )
+        }
+    }
+
+    private fun Canvas.drawScheduleDiagram(w: Int, h: Int) {
+        val k = 0.9
+        val steps = listNameValue.size
+        val startX = w / 3 * (1 - k)
+        val startY = h / 2 + h * k / 2
+        val dX = 2 * w / 3 * k / (steps - 1)
+        val maxSize = h * k
+        val eR = 10f
+
+        val maxValue = listNameValue.maxOf { it.value }
+        fun getSize(value: Double): Double {
+            return value / maxValue * maxSize
+        }
+
+        paint.mode = PaintMode.STROKE
+        paint.color = Color.makeARGB(255, 0, 0, 0)
+
+        this.drawRect(
+            Rect(
+                (startX).toFloat(),
+                (startY - h * k).toFloat(),
+                (startX + 2 * w / 3 * k).toFloat(),
+                (startY).toFloat()
+            ), paint
+        )
+
+        for (i in 0..steps - 1) {
+            if (i != steps - 1) {
+                paint.color = Color.makeARGB(255, 0, 0, 0)
+                this.drawLine(
+                    (startX + i * dX).toFloat(),
+                    (startY - getSize(listNameValue[i].value.toDouble())).toFloat(),
+                    (startX + i * dX + dX).toFloat(),
+                    (startY - getSize(listNameValue[i + 1].value.toDouble())).toFloat(),
+                    paint
+                )
+            }
+        }
+
+        paint.mode = PaintMode.FILL
+        for (i in 0..steps - 1) {
+            paint.color = listNameColor[i].color
+            this.drawCircle(
+                (startX + i * dX).toFloat(),
+                (startY - getSize(listNameValue[i].value.toDouble())).toFloat(),
+                eR,
+                paint
+            )
+        }
+
+        val upLeftX = w / 2 + w * k / 6
+        val upLeftY = h * (1 - k) / 2
+        val d = h * k / steps
+        font.setSize((2 * d / 3).toFloat())
+        for (i in 0..steps - 1) {
+            paint.color = listNameColor[i].color
+            this.drawString(
+                listNameColor[i].name,
+                upLeftX.toFloat(),
+                (i * d + upLeftY).toFloat() + font.size,
+                font,
+                paint
+            )
+        }
     }
 }
+
 
 object State {
     var mouseX = 0f
