@@ -6,22 +6,22 @@ import org.jetbrains.skiko.SkiaLayer
 import org.jetbrains.skiko.SkiaRenderer
 import org.jetbrains.skiko.SkiaWindow
 import java.awt.Dimension
-import java.awt.event.MouseEvent
-import java.awt.event.MouseMotionAdapter
-import java.util.*
+import java.io.File
+import java.util.Random
 import javax.swing.WindowConstants
+import kotlin.math.min
 
 enum class Diagram(val diagram: String) {
-    SCHEDULE("schedule_diagram"), PIE("pie_diagram"), COLUMN("column_diagram"), ERR("error");
+    SCHEDULE("schedule_diagram"), PIE("pie_diagram"), COLUMN("column_diagram");
 
     companion object {
-        fun getDiagramFromString(str: String): Diagram {
+        fun getDiagramFromString(str: String): Diagram? {
             for (value in values()) {
                 if (value.diagram == str) {
                     return value
                 }
             }
-            return ERR
+            return null
         }
     }
 }
@@ -29,17 +29,57 @@ enum class Diagram(val diagram: String) {
 data class NameColor(val name: String, val color: Int)
 data class NameValue(val name: String, val value: Int)
 
-fun main() {
-    createWindow(
-        "pf-2021-viz",
-        Diagram.SCHEDULE,
-        listOf(
-            NameValue("aa", 400),
-            NameValue("a", 20),
-            NameValue("a", 20),
-            NameValue("a", 20)
+class Input(args: Array<String>) {
+    var type: Diagram
+    var data: List<NameValue>
+    var outputFileName: String
+
+    init {
+        if (args.size != 3) {
+            throw(NotCorrectInputData())
+        }
+
+        val typeOrNull = Diagram.getDiagramFromString(args[0])
+        if (typeOrNull == null) {
+            throw(NotCorrectDiagramType(args[0]))
+        } else {
+            type = typeOrNull
+        }
+
+        if (!File(args[1]).isFile) {
+            throw(FileIsNotExist(args[1]))
+        } else {
+            data = getListOfNameValue(File(args[1]))
+        }
+
+        outputFileName = args[1]
+    }
+
+    private fun getListOfNameValue(file: File): List<NameValue> {
+        val list = mutableListOf<NameValue>()
+        for (line in file.readLines()) {
+            val name = line.substringAfter(' ')
+            val value = line.substringBefore(' ').toIntOrNull()
+            if(name==""||value==null){
+                throw(NotCorrectDataInFile(line))
+            }
+            list.add(NameValue(name,value))
+        }
+        return list
+    }
+}
+
+fun main(args: Array<String>) {
+    try {
+        val input = Input(args)
+        createWindow(
+            "pf-2021-viz",
+            input.type,
+            input.data
         )
-    )
+    } catch (e: Exception){
+        println(e.message)
+    }
 }
 
 fun createWindow(title: String, type: Diagram, listNameValue: List<NameValue>) = runBlocking(Dispatchers.Swing) {
@@ -48,7 +88,6 @@ fun createWindow(title: String, type: Diagram, listNameValue: List<NameValue>) =
     window.title = title
 
     window.layer.renderer = Renderer(window.layer, type, listNameValue)
-    window.layer.addMouseMotionListener(MyMouseMotionAdapter)
 
     window.preferredSize = Dimension(900, 600)
     window.minimumSize = Dimension(100, 100)
@@ -85,6 +124,7 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
             Diagram.COLUMN -> canvas.drawColumnDiagram(w, h)
             Diagram.SCHEDULE -> canvas.drawScheduleDiagram(w, h)
         }
+        canvas.drawListNamevalue(w,h)
         layer.needRedraw()
     }
 
@@ -117,21 +157,6 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
             )
             start += stepSize
         }
-
-        val upLeftX = w / 2 + w * k / 6
-        val upLeftY = h * (1 - k) / 2
-        val d = h * k / steps
-        font.setSize((2 * d / 3).toFloat())
-        for (i in 0..steps - 1) {
-            paint.color = listNameColor[i].color
-            this.drawString(
-                listNameColor[i].name,
-                upLeftX.toFloat(),
-                (i * d + upLeftY).toFloat() + font.size,
-                font,
-                paint
-            )
-        }
     }
 
     private fun Canvas.drawColumnDiagram(w: Int, h: Int) {
@@ -156,21 +181,6 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
                     (startX + i * 2 * dX + dX).toFloat(),
                     (startY).toFloat()
                 ), paint
-            )
-        }
-
-        val upLeftX = w / 2 + w * k / 6
-        val upLeftY = h * (1 - k) / 2
-        val d = h * k / steps
-        font.setSize((2 * d / 3).toFloat())
-        for (i in 0..steps - 1) {
-            paint.color = listNameColor[i].color
-            this.drawString(
-                listNameColor[i].name,
-                upLeftX.toFloat(),
-                (i * d + upLeftY).toFloat() + font.size,
-                font,
-                paint
             )
         }
     }
@@ -224,33 +234,25 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
                 paint
             )
         }
+    }
 
+    private fun Canvas.drawListNamevalue(w: Int, h: Int) {
+        val k = 0.9
+        val steps = listNameValue.size
         val upLeftX = w / 2 + w * k / 6
         val upLeftY = h * (1 - k) / 2
         val d = h * k / steps
-        font.setSize((2 * d / 3).toFloat())
+        font.setSize(min((2 * d / 3).toFloat(),40f))
+
         for (i in 0..steps - 1) {
             paint.color = listNameColor[i].color
             this.drawString(
-                listNameColor[i].name,
+                listNameValue[i].value.toString()+" "+listNameColor[i].name,
                 upLeftX.toFloat(),
                 (i * d + upLeftY).toFloat() + font.size,
                 font,
                 paint
             )
         }
-    }
-}
-
-
-object State {
-    var mouseX = 0f
-    var mouseY = 0f
-}
-
-object MyMouseMotionAdapter : MouseMotionAdapter() {
-    override fun mouseMoved(event: MouseEvent) {
-        State.mouseX = event.x.toFloat()
-        State.mouseY = event.y.toFloat()
     }
 }
