@@ -7,9 +7,13 @@ class NotCorrectDiagramType(typename: String) :
 }
 
 class FileIsNotExist(filename: String) :
-    Exception("File $filename is not exist.") {
+    Exception("Файла $filename не существует.") {
 }
 
-class NotCorrectDataInFile(line: String):
-    Exception("Файл содержит не правильный формат данных диаграммы.\n$line\nОжидается: value name"){
+class NotCorrectDataInFile(line: String) :
+    Exception("Файл содержит не правильный формат данных диаграммы.\n$line\nОжидается: value name") {
+}
+
+class SaveInFileImpossible(filename: String) :
+    Exception("Не возможно сохранить диаграмму в $filename.") {
 }
