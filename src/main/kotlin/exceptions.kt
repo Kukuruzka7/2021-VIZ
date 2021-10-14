@@ -13,7 +13,3 @@ class FileIsNotExist(filename: String) :
 class NotCorrectDataInFile(line: String) :
     Exception("Файл содержит не правильный формат данных диаграммы.\n$line\nОжидается: value name") {
 }
-
-class SaveInFileImpossible(filename: String) :
-    Exception("Не возможно сохранить диаграмму в $filename.") {
-}
