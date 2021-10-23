@@ -1,7 +1,10 @@
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.swing.Swing
-import org.jetbrains.skija.*
+import org.jetbrains.skija.Bitmap
+import org.jetbrains.skija.Data
+import org.jetbrains.skija.EncodedImageFormat
+import org.jetbrains.skija.Image
 import org.jetbrains.skiko.SkiaWindow
 import java.awt.Dimension
 import java.nio.ByteBuffer
@@ -44,15 +47,15 @@ fun main(args: Array<String>) {
 }
 
 //создание окна и сохранение png
-fun createWindow(title: String, type: Diagram, listNameValue: List<NameValue>, outputFileName: String) =
+fun createWindow(title: String, type: Diagram, nameValueList: List<NameValue>, outputFileName: String) =
     runBlocking(Dispatchers.Swing) {
         val window = SkiaWindow()
         window.defaultCloseOperation = WindowConstants.DISPOSE_ON_CLOSE
         window.title = title
 
-        window.layer.renderer = Renderer(window.layer, type, listNameValue)
+        window.layer.renderer = Renderer(window.layer, type, nameValueList)
 
-        window.preferredSize = Dimension(900, 600)
+        window.preferredSize = Dimension(2000, 1000)
         window.minimumSize = Dimension(100, 100)
         window.pack()
         window.layer.awaitRedraw()

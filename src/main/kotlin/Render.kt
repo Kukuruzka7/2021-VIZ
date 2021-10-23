@@ -1,8 +1,8 @@
 import org.jetbrains.skija.*
 import org.jetbrains.skiko.SkiaLayer
 import org.jetbrains.skiko.SkiaRenderer
-import java.util.*
 import kotlin.math.min
+import kotlin.random.Random
 
 class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<NameValue>) : SkiaRenderer {
     val typeface = Typeface.makeFromFile("fonts/JetBrainsMono-Regular.ttf")
@@ -17,9 +17,9 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
     val randomColor = List(listNameValue.size) {
         Color.makeARGB(
             255,
-            Random().nextInt(256),
-            Random().nextInt(256),
-            Random().nextInt(256)
+            Random.nextInt(256),
+            Random.nextInt(256),
+            Random.nextInt(256)
         )
     }
     val listNameColor = List(listNameValue.size) { NameColor(listNameValue[it].name, randomColor[it]) }
@@ -71,8 +71,7 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
 
         //отрисовка сегментов диаграммы
         var start = 0.0
-        val steps = listNameValue.size
-        for (i in 0..steps - 1) {
+        for (i in listNameValue.indices) {
             val stepSize = getStepSize(listNameValue[i].value.toDouble(), totalValue)
             if (paint.mode != PaintMode.STROKE) { //проверка нужна для того случая, если мы делаем обводку диаграммы
                 paint.color = listNameColor[i].color
@@ -108,7 +107,7 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
         }
 
         //отрисовка столбцов диаграммы
-        for (i in 0..steps - 1) {
+        for (i in listNameValue.indices) {
             if (paint.mode != PaintMode.STROKE) { //проверка нужна для того случая, если мы делаем обводку диаграммы
                 paint.color = listNameColor[i].color
             }
@@ -154,8 +153,8 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
             )
 
             //отрисовка линий между точками
-            for (i in 0..steps - 1) {
-                if (i != steps - 1) {
+            for (i in listNameValue.indices) {
+                if (i != listNameValue.size - 1) {
                     this.drawLine(
                         (startX + i * dX).toFloat(),
                         (startY - getSize(listNameValue[i].value.toDouble())).toFloat(),
@@ -168,7 +167,7 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
 
             //отрисовка точек
             paint.mode = PaintMode.FILL
-            for (i in 0..steps - 1) {
+            for (i in listNameValue.indices) {
                 paint.color = listNameColor[i].color
                 this.drawCircle(
                     (startX + i * dX).toFloat(),
@@ -179,7 +178,7 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
             }
         } else {
             //обводка кругов
-            for (i in 0..steps - 1) {
+            for (i in listNameValue.indices) {
                 this.drawCircle(
                     (startX + i * dX).toFloat(),
                     (startY - getSize(listNameValue[i].value.toDouble())).toFloat(),
@@ -204,7 +203,7 @@ class Renderer(val layer: SkiaLayer, val type: Diagram, val listNameValue: List<
         val maxLen = listNameValue.maxOf { it.name.length }
 
         //отрисовка названий: значений
-        for (i in 0..steps - 1) {
+        for (i in listNameValue.indices) {
             if (paint.mode != PaintMode.STROKE) { //проверка нужна для того случая, если мы делаем обводку диаграммы
                 paint.color = listNameColor[i].color
             }
